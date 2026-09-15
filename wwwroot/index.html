@@ -1,0 +1,212 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <title>Assistente personalizado</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #121212;
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .chat-container {
+            width: 700px;
+            height: 600px;
+            background: #1e1e1e;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.6);
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: #2d2d2d;
+            padding: 16px;
+            font-size: 20px;
+            font-weight: bold;
+            border-bottom: 1px solid #333;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 12px 14px;
+            border-radius: 10px;
+            line-height: 1.4;
+            white-space: pre-wrap;
+        }
+
+        .user {
+            align-self: flex-end;
+            background: #0078d4;
+        }
+
+        .bot {
+            align-self: flex-start;
+            background: #333333;
+        }
+
+        .chat-input {
+            display: flex;
+            padding: 16px;
+            background: #2d2d2d;
+            gap: 10px;
+        }
+
+        input {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            border: none;
+            outline: none;
+            font-size: 15px;
+        }
+
+        button {
+            padding: 12px 18px;
+            border: none;
+            border-radius: 8px;
+            background: #0078d4;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+            button:hover {
+                background: #106ebe;
+            }
+
+            button:disabled {
+                background: #555;
+                cursor: not-allowed;
+            }
+
+        .loading {
+            color: #bbbbbb;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            Assistente Personalizado
+        </div>
+
+        <div id="messages" class="chat-messages"></div>
+
+        <div class="chat-input">
+            <input id="pergunta"
+                   type="text"
+                   placeholder="Digite sua pergunta..."
+                   onkeydown="verificarEnter(event)" />
+
+            <button id="btnEnviar" onclick="enviarMensagem()">
+                Enviar
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let sessionId =
+            localStorage.getItem("sessionId");
+
+        if (!sessionId) {
+            sessionId = crypto.randomUUID();
+
+            localStorage.setItem(
+                "sessionId",
+                sessionId);
+        }
+
+        async function enviarMensagem() {
+            const input = document.getElementById("pergunta");
+            const botao = document.getElementById("btnEnviar");
+            const messages = document.getElementById("messages");
+
+            const pergunta = input.value.trim();
+
+            if (!pergunta) {
+                return;
+            }
+
+            adicionarMensagem(pergunta, "user");
+
+            input.value = "";
+            botao.disabled = true;
+
+            const loading = adicionarMensagem("Pensando...", "bot loading");
+
+            try {
+                const response = await fetch("/api/Chat", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        sessionId: sessionId,
+                        pergunta: pergunta
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error("Erro ao chamar a API.");
+                }
+
+                const data = await response.json();
+
+                loading.remove();
+
+                adicionarMensagem(data.resposta, "bot");
+            }
+            catch (error) {
+                loading.remove();
+
+                adicionarMensagem(
+                    "Erro ao obter resposta da IA. Verifique se o Ollama está aberto e se o modelo llama3.2 está disponível.",
+                    "bot"
+                );
+            }
+            finally {
+                botao.disabled = false;
+                input.focus();
+            }
+        }
+
+        function adicionarMensagem(texto, classe) {
+            const messages = document.getElementById("messages");
+
+            const div = document.createElement("div");
+            div.className = "message " + classe;
+            div.textContent = texto;
+
+            messages.appendChild(div);
+            messages.scrollTop = messages.scrollHeight;
+
+            return div;
+        }
+
+        function verificarEnter(event) {
+            if (event.key === "Enter") {
+                enviarMensagem();
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+# Build
+bin/
+obj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# SQLite
+chat.db
+chat.db-shm
+chat.db-wal
+
+# Logs
+*.log
